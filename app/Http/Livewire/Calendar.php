@@ -8,31 +8,51 @@ use Carbon\Carbon;
 class Calendar extends Component
 {
     public $events = '';
+    public $title;
+    public $dateStr;
 
     public function getevent()
     {
+        debug('getevent');
         $events = Event::select('id','title','start','end')->get();
         $this->events = json_encode($events);
-        return  json_encode($this->events);
+        //debug($this->events);
+        //$this->count = json_encode($events);
+        //dd($this->events);
+        //return json_encode($this->events);
+        debug($this->events);
     }
 
+    public function mount()
+    {
+        $this->getevent();
+    }
+
+    public function resetdata()
+    {
+        $this->title = '';
+        $this->dateStr = '';
+
+    }
     /**
     * Write code on Method
     *
     * @return response()
     */
-    public function addevent($event)
+    public function addevent($event = null)
     {
-        //dd($event);
-        $input['title'] = $event['title'];
-        $input['start'] = Carbon::parse($event['start']);
-        $input['end'] = Carbon::parse($event['start'])->addMinute('15');
-        Event::create($input);
-        $eventAdd = [
-            'title' => 'title',
-            'start' => $event['start']
-        ];
-        return json_encode($eventAdd);
+        debug('addevent');
+        $input['title'] = $this->title;
+        $input['start'] = Carbon::parse($this->dateStr);
+        $input['end'] = Carbon::parse($this->dateStr)->addMinute('15');
+        $event = Event::create($input);
+        // $eventAdd = [
+        //     'title' => 'title',
+        //     'start' => $event['start']
+        // ];
+        $this->getevent();
+        //$this->emit('refreshCalendar',json_encode($event));
+        //return json_encode($eventAdd);
     }
 
     /**
@@ -41,22 +61,28 @@ class Calendar extends Component
     * @return response()
     */
     public function eventDrop($event, $oldEvent)
-    {
-      $eventdata = Event::find($event['id']);
-      $eventdata->start = Carbon::parse($event['start']);
-      $eventdata->end = clone $eventdata->start;
-      $eventdata->end->addMinute('15');
-      $eventdata->save();
+    {   
+        debug("eventDrop");
+        $eventdata = Event::find($event['id']);
+        $duration = $eventdata->duration;
+        $eventdata->start = Carbon::parse($event['start']);
+        $eventdata->end = $eventdata->start->copy()->addMinutes($duration);
+        $eventdata->save();       
     }
 
     public function eventResize($event, $oldEvent)
     {
+        debug("eventResize");
         $eventdata = Event::find($event['id']);
         $eventdata->start = Carbon::parse($event['start']);
         $eventdata->end = Carbon::parse($event['end']);
         $eventdata->save();
     }
 
+    public function loadmodal($event) {
+        $this->title = $event['title'];
+        $this->dateStr = $event['start'];
+    }
     /**
     * Write code on Method
     *
@@ -64,8 +90,8 @@ class Calendar extends Component
     */
     public function render()
     {
-        $this->getevent();
-
+        debug("render");
+        $this->emit('reloadEvents');
         return view('livewire.calendar');
     }
 }
